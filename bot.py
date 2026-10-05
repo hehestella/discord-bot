@@ -15,8 +15,12 @@ def home():
     return "Discord Bot is alive!"
 
 
+@app.route("/health")
+def health():
+    return "OK", 200
+
+
 def run_web():
-    # Render 등에서 제공하는 포트(환경 변수 PORT)를 사용하거나 기본 8080 사용
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
 
@@ -67,14 +71,12 @@ current_quiz = None
 
 # ==================== [채널 ID 설정 영역] ====================
 LOG_CHANNEL_ID = 1556263403163615282  # 포인트 획득/사용 로그가 올라갈 채널 ID
-ADMIN_LOG_CHANNEL_ID = 1556263403163615282  # 관리자의 포인트 지급/차감/제품등록 로그가 올라갈 채널 ID
+ADMIN_LOG_CHANNEL_ID = 1556263403163615282  # 관리자 로그 채널 ID
 # ============================================================
 
-# 고정 흰색 컬러 (Hex: #FFFFFF)
 WHITE_COLOR = discord.Color.from_rgb(255, 255, 255)
 
 
-# 동적 상점 구매를 위한 버튼 뷰 (UI)
 class ShopView(discord.ui.View):
 
     def __init__(self):
@@ -129,7 +131,6 @@ class ShopView(discord.ui.View):
                 ephemeral=True,
             )
 
-            # 포인트 사용 로그 전송
             if LOG_CHANNEL_ID != 0:
                 log_channel = interaction.guild.get_channel(LOG_CHANNEL_ID)
                 if log_channel:
@@ -243,19 +244,6 @@ async def remove_product(interaction: discord.Interaction, 제품명: str):
     await interaction.response.send_message(
         f"상점에서 **{제품명}** 제품이 삭제되었습니다.", ephemeral=True
     )
-
-    if ADMIN_LOG_CHANNEL_ID != 0:
-        admin_log_channel = interaction.guild.get_channel(ADMIN_LOG_CHANNEL_ID)
-        if admin_log_channel:
-            embed = discord.Embed(
-                title="상점 제품 삭제 로그",
-                description=(
-                    f"**관리자:** {interaction.user.mention} ({interaction.user.name})\n"
-                    f"**삭제 제품:** {제품명}"
-                ),
-                color=WHITE_COLOR,
-            )
-            await admin_log_channel.send(embed=embed)
 
 
 # /퀴즈등록 명령어 (관리자 전용)
@@ -452,21 +440,6 @@ async def give_points(
         ephemeral=True,
     )
 
-    if ADMIN_LOG_CHANNEL_ID != 0:
-        admin_log_channel = interaction.guild.get_channel(ADMIN_LOG_CHANNEL_ID)
-        if admin_log_channel:
-            embed = discord.Embed(
-                title="관리자 포인트 지급 로그",
-                description=(
-                    f"**관리자:** {interaction.user.mention} ({interaction.user.name})\n"
-                    f"**지급 대상:** {대상.mention} ({대상.name})\n"
-                    f"**지급 포인트:** +{얼마나} 포인트\n"
-                    f"**대상의 총 보유 포인트:** {total_pts} 포인트"
-                ),
-                color=WHITE_COLOR,
-            )
-            await admin_log_channel.send(embed=embed)
-
 
 # /포인트차감 명령어 (관리자 전용)
 @bot.tree.command(
@@ -499,21 +472,6 @@ async def remove_points(
         ephemeral=True,
     )
 
-    if ADMIN_LOG_CHANNEL_ID != 0:
-        admin_log_channel = interaction.guild.get_channel(ADMIN_LOG_CHANNEL_ID)
-        if admin_log_channel:
-            embed = discord.Embed(
-                title="관리자 포인트 차감 로그",
-                description=(
-                    f"**관리자:** {interaction.user.mention} ({interaction.user.name})\n"
-                    f"**차감 대상:** {대상.mention} ({대상.name})\n"
-                    f"**차감 포인트:** -{얼마나} 포인트\n"
-                    f"**대상의 총 보유 포인트:** {new_pts} 포인트"
-                ),
-                color=WHITE_COLOR,
-            )
-            await admin_log_channel.send(embed=embed)
-
 
 # /상점 명령어
 @bot.tree.command(name="상점", description="포인트로 역할을 구매할 수 있는 상점을 엽니다.")
@@ -542,8 +500,14 @@ async def open_shop(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
 
-# 봇 실행 전 웹 서버 켜기 (24시간 유지용)
+# 웹 서버 백그라운드 구동 시작
 keep_alive()
 
-# 봇 실행 토큰 입력
-bot.run("YOUR_BOT_TOKEN")
+# 봇 실행 (Render 환경 변수에서 DISCORD_TOKEN을 가져오도록 설정)
+TOKEN = os.environ.get("DISCORD_TOKEN")
+if not TOKEN:
+    print(
+        "오류: DISCORD_TOKEN 환경 변수가 설정되지 않았습니다. 봇을 시작할 수 없습니다."
+    )
+else:
+    bot.run(TOKEN)
