@@ -27,11 +27,11 @@ def run_web():
 
 def keep_alive():
     t = Thread(target=run_web)
+    t.daemon = True
     t.start()
 
 
 # ======================================================================
-
 # 1. 봇 인텐트 설정
 intents = discord.Intents.default()
 intents.message_content = True
@@ -68,7 +68,6 @@ shop_items = db.get("shop", {})
 quiz_list = db.get("quizzes", [])
 
 current_quiz = None
-
 # ==================== [채널 ID 설정 영역] ====================
 LOG_CHANNEL_ID = 1556263403163615282  # 포인트 획득/사용 로그가 올라갈 채널 ID
 ADMIN_LOG_CHANNEL_ID = 1556263403163615282  # 관리자 로그 채널 ID
@@ -335,7 +334,7 @@ async def remove_quiz(interaction: discord.Interaction, 번호: int):
 
 # /퀴즈 명령어 (누구나 사용 가능)
 @bot.tree.command(
-    name="퀴즈", description="등록된 퀴즈 중 하나를 출제합니다. (누구나 가능)"
+    name="퀴즈", description="등록된 퀴즈 중 하나를 출제합니다."
 )
 async def start_quiz(interaction: discord.Interaction):
     if not quiz_list:
@@ -372,7 +371,6 @@ async def on_message(message):
         user_points[user_id] = user_points.get(user_id, 0) + reward
         total_pts = user_points[user_id]
         save_data()
-
         await message.channel.send(
             f"정답입니다! {message.author.mention}님께서 정답을 맞혀 {reward} 포인트를 획득하셨습니다!"
         )
@@ -500,14 +498,19 @@ async def open_shop(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
 
-# 웹 서버 백그라운드 구동 시작
-keep_alive()
+# ==================== [프로그램 실행 진입점] ====================
+if __name__ == "__main__":
+    # 1. 웹 서버를 백그라운드 스레드로 실행 (블로킹 방지)
+    keep_alive()
+    print("웹 서버(Flask)가 백그라운드에서 실행되었습니다.")
 
-# 봇 실행 (Render 환경 변수에서 DISCORD_TOKEN을 가져오도록 설정)
-TOKEN = os.environ.get("DISCORD_TOKEN")
-if not TOKEN:
-    print(
-        "오류: DISCORD_TOKEN 환경 변수가 설정되지 않았습니다. 봇을 시작할 수 없습니다."
-    )
-else:
-    bot.run(TOKEN)
+    # 2. Render 환경 변수에서 DISCORD_TOKEN 가져오기
+    TOKEN = os.environ.get("DISCORD_TOKEN")
+
+    if not TOKEN:
+        print(
+            "오류: DISCORD_TOKEN 환경 변수가 설정되지 않았습니다. 봇을 시작할 수 없습니다."
+        )
+    else:
+        # 3. 디스코드 봇 실행
+        bot.run(TOKEN)
